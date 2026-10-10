@@ -20,6 +20,7 @@ import {
   getFootnoteStyles,
   getStyles,
   getThemeCode,
+  keepTextAlignment,
 } from '@/utils/style';
 import { getPopupPosition, getPosition, Position } from '@/utils/sel';
 import { getPopupBounds, offsetPosition, PopupBounds } from '@/utils/insets';
@@ -322,6 +323,7 @@ const FootnotePopup: React.FC<FootnotePopupProps> = ({
         getLoadedFonts().forEach((font) => {
           mountCustomFont(doc, font);
         });
+        keepTextAlignment(doc);
 
         // Surface text selections made inside the popup document to the
         // Annotator. The CFI is mapped into the pristine section when the

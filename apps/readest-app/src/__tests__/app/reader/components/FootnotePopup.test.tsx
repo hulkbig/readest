@@ -90,7 +90,8 @@ vi.mock('@/store/customFontStore', () => ({
   useCustomFontStore: () => ({ getLoadedFonts: () => [] }),
 }));
 
-vi.mock('@/utils/style', () => ({
+vi.mock('@/utils/style', async (importOriginal) => ({
+  keepTextAlignment: (await importOriginal<typeof import('@/utils/style')>()).keepTextAlignment,
   applyLinkHitArea: hoisted.applyLinkHitArea,
   getBaseFontFamily: () => '"Reader Font", serif',
   getBaseFontSize: () => 22,
@@ -309,6 +310,42 @@ describe('FootnotePopup jump to location', () => {
     const view = await openFootnotePopup();
     expect(screen.getByLabelText('Jump to Location')).toBeTruthy();
     expect(stylesOf(view)).not.toContain('padding-block-start');
+  });
+
+  it.each([
+    'p',
+    'div',
+    'blockquote',
+    'dd',
+  ])('marks authored justification on popup %s elements for the layout override', async (tag) => {
+    await renderPopup();
+    const view = await openFootnotePopup();
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument!;
+    doc.head.innerHTML = '<style>.note { text-align: justify; }</style>';
+    doc.body.innerHTML = `<${tag} class="note">A justified footnote.</${tag}>`;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    try {
+      await act(async () => {
+        view.dispatchEvent(new CustomEvent('load', { detail: { doc, index: 3 } }));
+      });
+
+      // The reader's Full Justification override targets this class. The
+      // main view tags authored alignments on load, and popup documents
+      // need the same preparation to honor the reader's layout settings.
+      expect(doc.querySelector(tag)!.classList).toContain('aligned-justify');
+    } finally {
+      iframe.remove();
+      vi.unstubAllGlobals();
+    }
   });
 
   describe('selection reports (#6395)', () => {
